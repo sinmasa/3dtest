@@ -53,7 +53,7 @@
     var z = 0;
     var rot = 0;
 
-    for (var i = 0; i < 1000; i++) {
+    for (var i = 0; i < 500; i++) {
       // 地面
       const ground = new THREE.Mesh(new THREE.BoxGeometry(10000, 1, 1000),  new THREE.MeshStandardMaterial({color: (0x888888)}));
       scene.add(ground);
@@ -142,8 +142,8 @@
       camera.position.z = cz;
 
       sppUnten.position.x = cx;
-      sppUnten.position.z = cz - 270;
-      sppUnten.position.z = 100;
+      sppUnten.position.y = -125;
+      sppUnten.position.z = cz - 300;
 
       // レンダリング
       renderer.render(scene, camera);
