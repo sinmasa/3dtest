@@ -9,6 +9,9 @@ const KEYCODE_DN = 40;
 const RAIL_UNIT_LENGTH = 1000; // 線路１単位あたりの長さ（z座標）
 const RAIL_EXTEND_TIMES = 20; // 線路延長1回あたりの延長回数
 
+// マウス座標管理用のベクトルを作成
+const mouse = new THREE.Vector2();
+const mouse_old = new THREE.Vector2();
 
 window.addEventListener("keydown", event => {
   //console.log("keyCode= " + event.keyCode + "¥n");
@@ -29,16 +32,61 @@ var renderer = null;
 var camera = null;
 const initLen = 100;
 
+var sppMascon = null;
+var isMasconOpe = false; // マスコン操作中
+
+var ac = 0; // 加速度
+
 function init() {
   const width = 960;
   const height = 540;
 
+  ac = 0;
+
   // const fbx = new FBXLoader();
+
+  const canvas = document.querySelector('#myCanvas');
 
   // レンダラーを作成
   renderer = new THREE.WebGLRenderer({
-    canvas: document.querySelector('#myCanvas')
+    canvas: canvas
   });
+
+  // マウスイベントを登録
+  canvas.addEventListener('mousemove', event => {
+    const element = event.currentTarget;
+    // canvas要素上のXY座標
+    const x = event.clientX - element.offsetLeft;
+    const y = event.clientY - element.offsetTop;
+    // canvas要素の幅・高さ
+    const w = element.offsetWidth;
+    const h = element.offsetHeight;
+
+    // -1〜+1の範囲で現在のマウス座標を登録する
+    mouse.x = (x / w) * 2 - 1;
+    mouse.y = -(y / h) * 2 + 1;
+
+    if ((sppMascon != null) && isMasconOpe == true) {
+      //console.log('y='+y+', mouse.y='+mouse.y);
+      if (mouse_old.y < mouse.y) {
+        sppMascon.position.y ++;
+        if (sppMascon.position.y > 50) {
+          sppMascon.position.y = 50;
+        }
+      console.log('UP: sppMascon.position.y='+sppMascon.position.y);
+    } else if (mouse_old.y > mouse.y) {
+        sppMascon.position.y --;
+        if (sppMascon.position.y < -50) {
+          sppMascon.position.y = -50;
+        }
+        console.log('DN: sppMascon.position.y='+sppMascon.position.y);
+      }
+      ac = sppMascon.position.y / 500;
+    }
+    mouse_old.x = mouse.x;
+    mouse_old.y = mouse.y;
+  });
+
 
   // renderer.setPixelRatio(window.devicePixelRatio);
   // renderer.setSize(width, height);
@@ -56,11 +104,19 @@ function init() {
   // スプライト（運転席）
   const sppUnten = new THREE.Sprite(new THREE.SpriteMaterial({
     map: new THREE.TextureLoader().load('img/unten.svg'),
-    //      map: new THREE.TextureLoader().load('img/syasyou.png'),
   }));
-  sppUnten.scale.set(500 * 0.8, 180 * 0.8);
-  sppUnten.position.set(-200, 130, 700);
+  sppUnten.scale.set(600 * 0.8, 180 * 0.8);
+  sppUnten.position.set(-40, 130, 700);
   scene.add(sppUnten);
+
+  // スプライト（マスコンのレバー）
+  sppMascon = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.TextureLoader().load('img/mascon.svg'),
+  }));
+  sppMascon.scale.set(152 * 0.6, 42 * 0.6);
+  sppMascon.position.set(-200, 130, 680);
+  sppMascon.position.y = 0;
+  scene.add(sppMascon);
 
   var x = 0;
   var z = 0;
@@ -95,6 +151,8 @@ function init() {
   // 初期化のために実行
   onResize();
 
+  // レイキャストを作成
+  const raycaster = new THREE.Raycaster();
 
   // 初期化
   var len = 0;
@@ -110,6 +168,19 @@ function init() {
     var cx = 0.0;
     var cz = 0.0;
     var rot = 0.0;
+
+    // 速度に応じて加速補正をする
+    if ((ac > 0) && (v < 20)) {
+      v += ac * ((v + 0.1) / 10);
+    } else if ((ac > 0) && (v > 90)) {
+      v += ac * (0.5 / (v - 80));
+    } else {
+      v += ac * 0.5;
+    }
+
+    if (v < 0) { // 逆走はしない
+      v = 0;
+    }
 
     len -= v;
 
@@ -130,18 +201,37 @@ function init() {
     cx -= Math.sin(rot) * (Math.abs(len) % RAIL_UNIT_LENGTH);
     cz -= Math.cos(rot) * (Math.abs(len) % RAIL_UNIT_LENGTH);
 
-    document.getElementById("dbg").innerText = '速度=' + Math.abs(v) + ', 距離=' + len;
+    document.getElementById("dbg").innerText = '加速度=' + ac + ', 速度=' + Math.abs(v) + ', 距離=' + len;
 
     camera.rotation.y = rot;
     camera.position.x = cx;
     camera.position.y = 0;
     camera.position.z = cz;
 
-    sppUnten.position.x = cx - 100;
+    //    sppUnten.position.x = cx - 200;
     sppUnten.position.y = -100;
     sppUnten.position.z = cz - 300;
 
+    //sppMascon.position.y = -40;
+    sppMascon.position.z = cz - 299;
 
+    // レイキャスト = マウス位置からまっすぐに伸びる光線ベクトルを生成
+    raycaster.setFromCamera(mouse, camera);
+
+    // その光線とぶつかったオブジェクトを得る
+    const intersects = raycaster.intersectObjects(scene.children);
+
+    var isTouch = false;
+    if (intersects.length > 0) {
+      // ぶつかったオブジェクトに対してなんかする
+      for (var i = 0; i < intersects.length; i++) {
+        if (sppMascon == intersects[i].object) {
+          console.log('マスコン触った？');
+          isTouch = true;
+        }
+      }
+    }
+    isMasconOpe = isTouch;
     // 線路の残りが少なくなってきたら追加する
     if (Math.abs(maxLen) - Math.abs(RAIL_UNIT_LENGTH * 10) < Math.abs(len)) {
       console.debug('★線路延長：' + maxLen);
@@ -210,11 +300,11 @@ function extendRail(scene, rot, x, z) {
         scene.remove(objMng[l].bdAry[b]);
       }
       delete objMng[l];
-      cleanNum ++;
+      cleanNum++;
     }
   }
   console.log('削除データNum＝' + cleanNum)
-  
+
   return z;
 }
 
