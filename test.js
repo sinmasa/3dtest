@@ -12,6 +12,10 @@ const RAIL_EXTEND_TIMES = 20; // 線路延長1回あたりの延長回数
 // マウス座標管理用のベクトルを作成
 const mouse = new THREE.Vector2();
 
+this.Config = {
+  dpr: 1,
+};
+
 window.addEventListener("keydown", event => {
   //console.log("keyCode= " + event.keyCode + "¥n");
   if (event.keyCode === KEYCODE_DN) {
@@ -50,26 +54,26 @@ function init() {
   renderer = new THREE.WebGLRenderer({
     canvas: canvas
   });
-var xy = '';
+  var xy = '';
 
-var isMouseDown = false;
+  var isMouseDown = false;
 
-// マウスイベントを登録
-canvas.addEventListener('mousedown', event => {
+  // マウスイベントを登録
+  canvas.addEventListener('mousedown', event => {
 
-  if (event.button != 0) { return; } // 左クリック以外は無視
+    if (event.button != 0) { return; } // 左クリック以外は無視
 
-  isMouseDown = true;
-});
-// マウスイベントを登録
-window.addEventListener('mouseup', event => {
+    isMouseDown = true;
+  });
+  // マウスイベントを登録
+  window.addEventListener('mouseup', event => {
 
-  if (event.button != 0) { return; } // 左クリック以外は無視
+    if (event.button != 0) { return; } // 左クリック以外は無視
 
-  isMouseDown = false;
-});
+    isMouseDown = false;
+  });
 
-    // マウスイベントを登録
+  // マウスイベントを登録
   canvas.addEventListener('mousemove', event => {
 
     if (!isMouseDown) { return; }
@@ -122,7 +126,7 @@ window.addEventListener('mouseup', event => {
   sppMascon.position.y = 0;
   sppMascon.transparent = true;
   sppMascon.opacity = 0.9;
-//  sppMascon.blending = THREE.AdditiveBlending
+  //  sppMascon.blending = THREE.AdditiveBlending
   scene.add(sppMascon);
 
   // メーター
@@ -131,7 +135,7 @@ window.addEventListener('mouseup', event => {
     map: new THREE.TextureLoader().load('img/speed.svg'),
     side: THREE.FrontSide,
     transparent: true,
-    opacity: 0.01,
+    opacity: 0,
   });
   const mSpeed = new THREE.Mesh(geoSpeed, matSpeed);
   scene.add(mSpeed);
@@ -157,6 +161,9 @@ window.addEventListener('mouseup', event => {
   // シーンに追加
   scene.add(light);
 
+  var txt = null;
+  //scene.add(txt.getMesh());
+
   // // 建物
   // fbx.load('img/buildings/building.fbx', (obj)=>{
   //   scene.add(obj);
@@ -170,14 +177,54 @@ window.addEventListener('mouseup', event => {
   onResize();
 
   // レイキャストを作成
-  const raycaster = new THREE.Raycaster();
+  //const raycaster = new THREE.Raycaster();
 
   // 初期化
   var len = 0;
   v = 0;
+  var pre_v = 0;
   var maxLen = - RAIL_EXTEND_TIMES * RAIL_UNIT_LENGTH;
   // 初回実行
   tick();
+
+  const audioContext = new AudioContext();
+
+  const aud_start = document.getElementById('snd_start');
+  const track_start = audioContext.createMediaElementSource(aud_start);
+  track_start.connect(audioContext.destination);
+
+  const aud_end = document.getElementById('snd_end');
+  const track_end = audioContext.createMediaElementSource(aud_end);
+  track_end.connect(audioContext.destination);
+
+  const gainNode = audioContext.createGain();
+  gainNode.connect(audioContext.destination);
+
+  var isPlay = false;
+  var audioBuffer_goto = null;
+
+  // 音声ファイルのダウンロード要求
+  const request = new XMLHttpRequest();
+  var bufferSourceNode = null;
+  request.open('GET', 'sound/gotogoto.mp3', true);
+  request.responseType = 'arraybuffer';
+  request.onload = function () {
+    // ダウンロード完了後に、取得した音声ファイルを波形データへデコード
+    audioContext.decodeAudioData(request.response, function (buffer) {
+
+      audioBuffer_goto = buffer;
+
+      // ---------- イベント ----------
+
+      // // ピッチ変更
+      // document.querySelector('.pitch-range').onchange = function (event) {
+      //   bufferSourceNode.playbackRate.value = event.target.value;
+      //   document.querySelector('.pitch-span').textContent = event.target.value;
+      // };
+    }, function (error) {
+    });
+  };
+  request.send();
 
   function tick() {
     requestAnimationFrame(tick);
@@ -189,9 +236,9 @@ window.addEventListener('mouseup', event => {
 
     // 速度に応じて加速補正をする
     if ((ac > 0) && (v < 20)) {
-      v += ac * 0.2;
+      v += ac * (0.2 + (v * 0.01));
     } else if ((ac > 0) && (v > 90)) {
-      v += ac * (0.5 / (v - 80));
+      v += ac * (0.1 + (100 / v * 0.1));
     } else {
       v += ac * 0.5;
     }
@@ -199,6 +246,40 @@ window.addEventListener('mouseup', event => {
     if (v < 0) { // 逆走はしない
       v = 0;
     }
+
+    if ((v > 0) && (pre_v == 0)) {
+
+      aud_start.play();
+      if (audioBuffer_goto != null) {
+        if (isPlay == false) {
+          // ノード作成
+          bufferSourceNode = audioContext.createBufferSource();
+
+          // デコード済み波形データのバッファ登録とループ再生設定
+          bufferSourceNode.buffer = audioBuffer_goto;
+          bufferSourceNode.loop = true;
+
+          // ノード接続
+          bufferSourceNode.connect(gainNode);
+
+          bufferSourceNode.start();
+          isPlay = true;
+        }
+      }
+    } else if ((pre_v > 0) && (v == 0)) {
+      if (bufferSourceNode != null) {
+        if (isPlay == true) {
+          bufferSourceNode.stop();
+          bufferSourceNode = null;
+          isPlay = false;
+        }
+      }
+      aud_end.play();
+    }
+    if (isPlay) {
+      bufferSourceNode.playbackRate.value = 0.1 + (v * 0.01);
+    }
+    pre_v = v;
 
     len -= v;
 
@@ -219,7 +300,7 @@ window.addEventListener('mouseup', event => {
     cx -= Math.sin(rot) * (Math.abs(len) % RAIL_UNIT_LENGTH);
     cz -= Math.cos(rot) * (Math.abs(len) % RAIL_UNIT_LENGTH);
 
-    document.getElementById("dbg").innerText = '加速度=' + Math.floor(ac*100) /100+ ', 速度=' + Math.floor(Math.abs(v)) + ', 距離=' + Math.floor(-len/100) + ',(m) xy=' + xy;
+    document.getElementById("dbg").innerText = '加速度=' + Math.floor(ac * 100) / 100 + ', 速度=' + Math.floor(Math.abs(v)) + ', 距離=' + Math.floor(-len / 100) + ',(m) xy=' + xy;
 
     camera.rotation.y = rot;
     camera.position.x = cx;
@@ -235,18 +316,37 @@ window.addEventListener('mouseup', event => {
     mSpeed.position.z = cz - 305;
     mSpeed.rotation.y = rot;
 
+    if (txt != null) {
+      txt.geometry.dispose();
+      txt.material.dispose();
+      scene.remove(txt.getMesh());
+    }
+
+    var speed = Math.floor(Math.abs(v));
+    var spped_len = 3 - ('' + speed).length;
+    for (var i = 0; i < spped_len; i++) {
+      speed = '  ' + speed;
+    }
+    txt = new TextMesh();
+    txt.drawText(speed);
+    scene.add(txt.getMesh());
+
+    const mNumber = txt.getMesh();
+    mNumber.position.x = cx - 80
+    mNumber.position.y = -57;
+    mNumber.position.z = cz - 285;
+    mNumber.rotation.y = rot;
+
     if (isMouseDown) {
-      matSpeed.opacity += 0.03;
-      if (matSpeed.opacity > 1) {
-        matSpeed.opacity = 1;
+      if (matSpeed.opacity < 1) {
+        matSpeed.opacity += 0.05;
       }
     } else {
-      matSpeed.opacity -= 0.03;
-      if (matSpeed.opacity < 0) {
-        matSpeed.opacity = 0;
+      if (matSpeed.opacity > 0) {
+        matSpeed.opacity -= 0.05;
       }
     }
-  
+
 
     //sppMascon.position.y = -40;
     sppMascon.position.z = cz - 300;
@@ -347,6 +447,9 @@ function extendRail(scene, rot, x, z) {
 }
 
 function onResize() {
+
+  //this.setConfig();
+
   // サイズを取得
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -358,4 +461,26 @@ function onResize() {
   // カメラのアスペクト比を正す
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+}
+
+function setConfig() {
+  this.Config = {
+    width: window.innerWidth, // Canvasの幅
+    height: window.innerHeight, // Canvasの高さ
+    cameraZ: 1000, // カメラのz座標
+    dpr: 1, // device pixel ratio
+    aspectRatio: 1.0, // 画面アスペクト比
+  };
+  // 親要素のサイズを取得
+  //const domRect = this.container.getBoundingClientRect();
+  const domRect = window;
+  const width = domRect.width;
+  const height = domRect.height;
+
+  this.Config.dpr = Math.min(window.devicePixelRatio, 2);
+  this.Config.width = width;
+  this.Config.height = height;
+  this.Config.halfWidth = this.Config.width / 2;
+  this.Config.halfHeight = this.Config.height / 2;
+  this.Config.aspectRatio = this.Config.width / this.Config.height;
 }
