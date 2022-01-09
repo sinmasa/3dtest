@@ -11,7 +11,6 @@ const RAIL_EXTEND_TIMES = 20; // 線路延長1回あたりの延長回数
 
 // マウス座標管理用のベクトルを作成
 const mouse = new THREE.Vector2();
-const mouse_old = new THREE.Vector2();
 
 window.addEventListener("keydown", event => {
   //console.log("keyCode= " + event.keyCode + "¥n");
@@ -33,7 +32,7 @@ var camera = null;
 const initLen = 100;
 
 var sppMascon = null;
-var isMasconOpe = false; // マスコン操作中
+//var isMasconOpe = false; // マスコン操作中
 
 var ac = 0; // 加速度
 
@@ -51,13 +50,35 @@ function init() {
   renderer = new THREE.WebGLRenderer({
     canvas: canvas
   });
+var xy = '';
 
-  // マウスイベントを登録
+var isMouseDown = false;
+
+// マウスイベントを登録
+canvas.addEventListener('mousedown', event => {
+
+  if (event.button != 0) { return; } // 左クリック以外は無視
+
+  isMouseDown = true;
+});
+// マウスイベントを登録
+window.addEventListener('mouseup', event => {
+
+  if (event.button != 0) { return; } // 左クリック以外は無視
+
+  isMouseDown = false;
+});
+
+    // マウスイベントを登録
   canvas.addEventListener('mousemove', event => {
+
+    if (!isMouseDown) { return; }
+
     const element = event.currentTarget;
     // canvas要素上のXY座標
     const x = event.clientX - element.offsetLeft;
     const y = event.clientY - element.offsetTop;
+    xy = x + ', ' + y;
     // canvas要素の幅・高さ
     const w = element.offsetWidth;
     const h = element.offsetHeight;
@@ -66,25 +87,8 @@ function init() {
     mouse.x = (x / w) * 2 - 1;
     mouse.y = -(y / h) * 2 + 1;
 
-    if ((sppMascon != null) && isMasconOpe == true) {
-      //console.log('y='+y+', mouse.y='+mouse.y);
-      if (mouse_old.y < mouse.y) {
-        sppMascon.position.y ++;
-        if (sppMascon.position.y > 50) {
-          sppMascon.position.y = 50;
-        }
-      console.log('UP: sppMascon.position.y='+sppMascon.position.y);
-    } else if (mouse_old.y > mouse.y) {
-        sppMascon.position.y --;
-        if (sppMascon.position.y < -50) {
-          sppMascon.position.y = -50;
-        }
-        console.log('DN: sppMascon.position.y='+sppMascon.position.y);
-      }
-      ac = sppMascon.position.y / 500;
-    }
-    mouse_old.x = mouse.x;
-    mouse_old.y = mouse.y;
+    sppMascon.position.y = mouse.y * 100;
+    ac = - mouse.y / 10;
   });
 
 
@@ -116,7 +120,21 @@ function init() {
   sppMascon.scale.set(152 * 0.6, 42 * 0.6);
   sppMascon.position.set(-200, 130, 680);
   sppMascon.position.y = 0;
+  sppMascon.transparent = true;
+  sppMascon.opacity = 0.9;
+//  sppMascon.blending = THREE.AdditiveBlending
   scene.add(sppMascon);
+
+  // メーター
+  const geoSpeed = new THREE.BoxGeometry(160, 200, 0.01);
+  const matSpeed = new THREE.MeshStandardMaterial({
+    map: new THREE.TextureLoader().load('img/speed.svg'),
+    side: THREE.FrontSide,
+    transparent: true,
+    opacity: 0.01,
+  });
+  const mSpeed = new THREE.Mesh(geoSpeed, matSpeed);
+  scene.add(mSpeed);
 
   var x = 0;
   var z = 0;
@@ -171,7 +189,7 @@ function init() {
 
     // 速度に応じて加速補正をする
     if ((ac > 0) && (v < 20)) {
-      v += ac * ((v + 0.1) / 10);
+      v += ac * 0.2;
     } else if ((ac > 0) && (v > 90)) {
       v += ac * (0.5 / (v - 80));
     } else {
@@ -201,7 +219,7 @@ function init() {
     cx -= Math.sin(rot) * (Math.abs(len) % RAIL_UNIT_LENGTH);
     cz -= Math.cos(rot) * (Math.abs(len) % RAIL_UNIT_LENGTH);
 
-    document.getElementById("dbg").innerText = '加速度=' + ac + ', 速度=' + Math.abs(v) + ', 距離=' + len;
+    document.getElementById("dbg").innerText = '加速度=' + Math.floor(ac*100) /100+ ', 速度=' + Math.floor(Math.abs(v)) + ', 距離=' + Math.floor(-len/100) + ',(m) xy=' + xy;
 
     camera.rotation.y = rot;
     camera.position.x = cx;
@@ -210,11 +228,30 @@ function init() {
 
     //    sppUnten.position.x = cx - 200;
     sppUnten.position.y = -100;
-    sppUnten.position.z = cz - 300;
+    sppUnten.position.z = cz - 310;
+
+    mSpeed.position.x = cx - 205;
+    mSpeed.position.y = -5;
+    mSpeed.position.z = cz - 305;
+    mSpeed.rotation.y = rot;
+
+    if (isMouseDown) {
+      matSpeed.opacity += 0.03;
+      if (matSpeed.opacity > 1) {
+        matSpeed.opacity = 1;
+      }
+    } else {
+      matSpeed.opacity -= 0.03;
+      if (matSpeed.opacity < 0) {
+        matSpeed.opacity = 0;
+      }
+    }
+  
 
     //sppMascon.position.y = -40;
-    sppMascon.position.z = cz - 299;
+    sppMascon.position.z = cz - 300;
 
+    /*
     // レイキャスト = マウス位置からまっすぐに伸びる光線ベクトルを生成
     raycaster.setFromCamera(mouse, camera);
 
@@ -232,6 +269,7 @@ function init() {
       }
     }
     isMasconOpe = isTouch;
+    */
     // 線路の残りが少なくなってきたら追加する
     if (Math.abs(maxLen) - Math.abs(RAIL_UNIT_LENGTH * 10) < Math.abs(len)) {
       console.debug('★線路延長：' + maxLen);
