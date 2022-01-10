@@ -23,18 +23,6 @@ class TextMesh {
             map: this.texture,
             side: THREE.FrontSide,
         });
-        // // マテリアルの作成
-        // this.material = new THREE.Material({
-        //     uniforms: {
-        //         texture: { value: this.texture },
-        //         time: { value: 0.0 },
-        //         speed: { value: 1.0 },
-        //         resolution: { value: this.Config.aspectRatio },
-        //     },
-        //     //vertexShader: vertexShader,
-        //     //fragmentShader: fragmentShader,
-        //     transparent: false,
-        // });
         this.mesh = new THREE.Mesh(this.geometry, this.material);
     }
 
@@ -49,8 +37,6 @@ class TextMesh {
    * @memberof Canvas
    * @see https://qiita.com/mtoutside/items/b1e6adb8ca60c14a8ee4
    */
-
-
   createTexture(options) {
     // Canvas要素を作成
     const canvas = document.createElement('canvas');
