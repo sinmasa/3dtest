@@ -58,15 +58,21 @@ function init() {
 
   var isMouseDown = false;
 
+  // マウスかタッチかイベント判定
+  const supportTouch = 'ontouchend' in document;
+  const EVENTNAME_TOUCHSTART = supportTouch ? 'touchstart' : 'mousedown';
+  const EVENTNAME_TOUCHMOVE = supportTouch ? 'touchmove' : 'mousemove';
+  const EVENTNAME_TOUCHEND = supportTouch ? 'touchend' : 'mouseup';
+
   // マウスイベントを登録
-  canvas.addEventListener('mousedown', event => {
+  canvas.addEventListener(EVENTNAME_TOUCHSTART, event => {
 
     if (event.button != 0) { return; } // 左クリック以外は無視
 
     isMouseDown = true;
   });
   // マウスイベントを登録
-  window.addEventListener('mouseup', event => {
+  window.addEventListener(EVENTNAME_TOUCHEND, event => {
 
     if (event.button != 0) { return; } // 左クリック以外は無視
 
@@ -74,7 +80,7 @@ function init() {
   });
 
   // マウスイベントを登録
-  canvas.addEventListener('mousemove', event => {
+  canvas.addEventListener(EVENTNAME_TOUCHMOVE, event => {
 
     if (!isMouseDown) { return; }
 
@@ -238,7 +244,7 @@ function init() {
     if ((ac > 0) && (v < 20)) {
       v += ac * (0.2 + (v * 0.01));
     } else if ((ac > 0) && (v > 90)) {
-      v += ac * (0.1 + (100 / v * 0.1));
+      v += ac * (0.05 + (100 / v * 0.1));
     } else {
       v += ac * 0.5;
     }
