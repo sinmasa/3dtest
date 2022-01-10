@@ -119,29 +119,47 @@ function init() {
   //camera.far = 10000;
 
   // スプライト（運転席）
-  const sppUnten = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: new THREE.TextureLoader().load('img/unten.svg'),
-  }));
-  sppUnten.scale.set(600 * 0.8, 180 * 0.8);
+  const sppUnten = new THREE.Mesh(
+    new THREE.PlaneGeometry(600 * 0.8, 180 * 0.8),
+    new THREE.MeshStandardMaterial({
+      map: new THREE.TextureLoader().load('img/unten.svg'),
+      side: THREE.FrontSide,
+      transparent: true,
+      opacity: 1,
+    })
+  );
   sppUnten.position.set(-40, 130, 700);
+  //sppUnten.position.set(-0, 0, -100);
   scene.add(sppUnten);
+  //camera.add(sppUnten);
+
+  // スプライト（車掌さん）
+  const sppSyasyou = new THREE.Mesh(
+    new THREE.PlaneGeometry(558 * 0.3, 720 * 0.3),
+    new THREE.MeshStandardMaterial({
+      map: new THREE.TextureLoader().load('img/syasyou.png'),
+      side: THREE.FrontSide,
+      alphaTest:0.2,
+    })
+  );
+  sppSyasyou.position.set(200, 0, 100);
+  scene.add(sppSyasyou);
 
   // スプライト（マスコンのレバー）
-  sppMascon = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: new THREE.TextureLoader().load('img/mascon.svg'),
-    transparent: true,
-    opacity: 1,
-  }));
-  sppMascon.scale.set(152 * 0.6, 42 * 0.6);
-  sppMascon.position.set(-200, 130, 680);
-  sppMascon.position.y = 0;
-  sppMascon.transparent = true;
-  sppMascon.opacity = 0.9;
-  //  sppMascon.blending = THREE.AdditiveBlending
+  const sppMascon = new THREE.Mesh(
+    new THREE.PlaneGeometry(152 * 0.6, 42 * 0.6),
+    new THREE.MeshStandardMaterial({
+      map: new THREE.TextureLoader().load('img/mascon.svg'),
+      side: THREE.FrontSide,
+      transparent: true,
+      opacity: 1,
+    })
+  );
+  sppMascon.position.set(-200, 0, 680);
   scene.add(sppMascon);
 
   // メーター
-  const geoSpeed = new THREE.BoxGeometry(160, 200, 0.01);
+  const geoSpeed = new THREE.PlaneGeometry(160, 200);
   const matSpeed = new THREE.MeshStandardMaterial({
     map: new THREE.TextureLoader().load('img/speed.svg'),
     side: THREE.FrontSide,
@@ -318,9 +336,9 @@ function init() {
     camera.position.y = 0;
     camera.position.z = cz;
 
-    //    sppUnten.position.x = cx - 200;
-    sppUnten.position.y = -100;
-    sppUnten.position.z = cz - 310;
+    //sppUnten.position.set(cx - (40 * Math.sin(rot)), -100, cz - (310 * Math.cos(rot)));
+    sppUnten.position.set(cx - 40, -100, cz - 310);
+    sppUnten.rotation.y = rot;
 
     mSpeed.position.x = cx - 205;
     mSpeed.position.y = -5;
@@ -348,6 +366,9 @@ function init() {
     mNumber.position.z = cz - 285;
     mNumber.rotation.y = rot;
 
+    sppSyasyou.position.set(cx + 150, -100, cz - 300);
+    sppSyasyou.rotation.y = rot;
+
     if (isMouseDown) {
       if (matSpeed.opacity < 1) {
         matSpeed.opacity += 0.05;
@@ -370,6 +391,7 @@ function init() {
     }
 
     //sppMascon.position.y = -40;
+    sppMascon.position.x = cx - 200;
     sppMascon.position.z = cz - 300;
 
     /*
@@ -482,26 +504,4 @@ function onResize() {
   // カメラのアスペクト比を正す
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-}
-
-function setConfig() {
-  this.Config = {
-    width: window.innerWidth, // Canvasの幅
-    height: window.innerHeight, // Canvasの高さ
-    cameraZ: 1000, // カメラのz座標
-    dpr: 1, // device pixel ratio
-    aspectRatio: 1.0, // 画面アスペクト比
-  };
-  // 親要素のサイズを取得
-  //const domRect = this.container.getBoundingClientRect();
-  const domRect = window;
-  const width = domRect.width;
-  const height = domRect.height;
-
-  this.Config.dpr = Math.min(window.devicePixelRatio, 2);
-  this.Config.width = width;
-  this.Config.height = height;
-  this.Config.halfWidth = this.Config.width / 2;
-  this.Config.halfHeight = this.Config.height / 2;
-  this.Config.aspectRatio = this.Config.width / this.Config.height;
 }
