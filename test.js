@@ -101,7 +101,7 @@ function init() {
     ac = - mouse.y / 10;
 
     // スクロールなどのイベントを起こさない
-    ev.preventDefault();
+    event.preventDefault();
   });
 
 
