@@ -99,6 +99,9 @@ function init() {
 
     sppMascon.position.y = mouse.y * 100;
     ac = - mouse.y / 10;
+
+    // スクロールなどのイベントを起こさない
+    ev.preventDefault();
   });
 
 
@@ -126,6 +129,8 @@ function init() {
   // スプライト（マスコンのレバー）
   sppMascon = new THREE.Sprite(new THREE.SpriteMaterial({
     map: new THREE.TextureLoader().load('img/mascon.svg'),
+    transparent: true,
+    opacity: 1,
   }));
   sppMascon.scale.set(152 * 0.6, 42 * 0.6);
   sppMascon.position.set(-200, 130, 680);
@@ -353,6 +358,16 @@ function init() {
       }
     }
 
+
+    if (isMouseDown) {
+      if (sppMascon.material.opacity < 1) {
+        sppMascon.material.opacity += 0.01;
+      }
+    } else {
+      if (sppMascon.material.opacity > 0.5) {
+        sppMascon.material.opacity -= 0.01;
+      }
+    }
 
     //sppMascon.position.y = -40;
     sppMascon.position.z = cz - 300;
