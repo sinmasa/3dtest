@@ -67,14 +67,14 @@ function init() {
   // マウスイベントを登録
   canvas.addEventListener(EVENTNAME_TOUCHSTART, event => {
 
-    if (event.button != 0) { return; } // 左クリック以外は無視
+    //if (event.button != 0) { return; } // 左クリック以外は無視
 
     isMouseDown = true;
   });
   // マウスイベントを登録
   window.addEventListener(EVENTNAME_TOUCHEND, event => {
 
-    if (event.button != 0) { return; } // 左クリック以外は無視
+    //if (event.button != 0) { return; } // 左クリック以外は無視
 
     isMouseDown = false;
   });
